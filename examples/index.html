@@ -1,447 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<title>The Kodavas - Architectural Museum</title>
 		<meta charset="utf-8">
-		<title>three.js examples</title>
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<link rel="shortcut icon" href="../files/favicon_white.ico" media="(prefers-color-scheme: dark)"/>
-		<link rel="shortcut icon" href="../files/favicon.ico" media="(prefers-color-scheme: light)" />
-		<link rel="stylesheet" type="text/css" href="../files/main.css">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			#blocker {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(0,0,0,0.5);
+			}
+
+			#instructions {
+				width: 100%;
+				height: 100%;
+
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+
+				text-align: center;
+				font-size: 14px;
+				cursor: pointer;
+			}
+		</style>
 	</head>
 	<body>
-		<script type="text/javascript">
-
-			var _gaq = _gaq || [];
-			_gaq.push(['_setAccount', 'UA-86951-15']);
-			_gaq.push(['_trackPageview']);
-
-			(function() {
-				var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-			})();
-
-		</script>
-
-		<div id="panel">
-
-			<div id="header">
-				<h1><a href="https://threejs.org">three.js</a></h1>
-
-				<div id="sections">
-					<a href="../docs/index.html#manual/introduction/Creating-a-scene">docs</a>
-					<span class="selected">examples</span>
-				</div>
-
-				<div id="expandButton"></div>
+		<div id="blocker">
+			<div id="instructions">
+				<p style="font-size:36px">
+					Click to Start
+				</p>
+				<p>
+					Movement: WASD<br/>
+					Jump: SPACE<br/>
+					Look Around: MOUSE
+				</p>
 			</div>
-
-			<div id="panelScrim"></div>
-
-			<div id="contentWrapper">
-
-				<div id="inputWrapper">
-					<input placeholder="" type="text" id="filterInput" autocorrect="off" autocapitalize="off" spellcheck="false" />
-					<div id="exitSearchButton"></div>
-				</div>
-
-				<div id="content">
-					<img id="previewsToggler" src="./files/thumbnails.svg" width="20" height="20" />
-				</div>
-			</div>
-
 		</div>
 
-		<iframe id="viewer" name="viewer" allow="fullscreen; xr-spatial-tracking;"></iframe>
+		<!-- Import maps polyfill -->
+		<!-- Remove this when import maps will be widely supported -->
+		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
 
-		<a id="button" target="_blank"><img src="../files/ic_code_black_24dp.svg"></a>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js"
+				}
+			}
+		</script>
 
-		<script>
+		<script type="module">
 
-		const panel = document.getElementById( 'panel' );
-		const content = document.getElementById( 'content' );
-		const viewer = document.getElementById( 'viewer' );
-		const filterInput = document.getElementById( 'filterInput' );
-		const exitSearchButton = document.getElementById( 'exitSearchButton' );
-		const expandButton = document.getElementById( 'expandButton' );
-		const viewSrcButton = document.getElementById( 'button' );
-		const panelScrim = document.getElementById( 'panelScrim' );
-		const previewsToggler = document.getElementById( 'previewsToggler' );
+			import * as THREE from 'three';
 
-		const sectionLink = document.querySelector( '#sections > a' );
-		const sectionDefaultHref = sectionLink.href;
+			import { PointerLockControls } from './jsm/controls/PointerLockControls.js';
+			import { OrbitControls } from './jsm/controls/OrbitControls.js';
+			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+			import { RGBELoader } from './jsm/loaders/RGBELoader.js';
 
-		const links = {};
-		const validRedirects = new Map();
-		const container = document.createElement( 'div' );
 
-		let selected = null;
 
-		init();
+			let camera, scene, renderer, controls;
 
-		async function init() {
+			const objects = [];
 
-			content.appendChild( container );
+			let raycaster;
 
-			viewSrcButton.style.display = 'none';
+			let moveForward = false;
+			let moveBackward = false;
+			let moveLeft = false;
+			let moveRight = false;
+			let canJump = false;
 
-			const files = await ( await fetch( 'files.json' ) ).json();
-			const tags = await ( await fetch( 'tags.json' ) ).json();
+			let prevTime = performance.now();
+			const velocity = new THREE.Vector3();
+			const direction = new THREE.Vector3();
+			const vertex = new THREE.Vector3();
+			const color = new THREE.Color();
 
-			for ( const key in files ) {
+			init();
+			animate();
 
-				const section = files[ key ];
+			function init() {
 
-				const header = document.createElement( 'h2' );
-				header.textContent = key;
-				header.setAttribute( 'data-category', key );
-				container.appendChild( header );
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.y = 10;
 
-				for ( let i = 0; i < section.length; i ++ ) {
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+				scene.fog = new THREE.Fog( 0xffffff, 0, 750 );
 
-					const file = section[ i ];
+				const light = new THREE.HemisphereLight( 0xeeeeff, 0x777788, 0.75 );
+				light.position.set( 0.5, 1, 0.75 );
+				scene.add( light );
 
-					const link = createLink( file );
-					container.appendChild( link );
+				controls = new PointerLockControls( camera, document.body );
 
-					links[ file ] = link;
-					validRedirects.set( file, file + '.html' );
+				//-------------------------------------------
+
+				new RGBELoader()
+					.setPath( 'textures/equirectangular/' )
+					.load( 'quarry_01_1k.hdr', function ( texture ) {
+
+						texture.mapping = THREE.EquirectangularReflectionMapping;
+
+						scene.background = texture;
+						scene.environment = texture;
+
+						render();
+				
+
+						// model
+
+						const loader_bakkapore = new GLTFLoader().setPath( 'models/gltf/' );
+
+						loader_bakkapore.load( 'Bakka_Pore.glb', function ( bakkapore ) {
+							bakkapore.scene.position.set(0,0,-100);
+							bakkapore.scene.scale.set( 30.0, 30.0, 30.0 );
+							scene.add( bakkapore.scene );
+							render();
+
+						} );
+
+						const loader_kallbotti = new GLTFLoader().setPath( 'models/gltf/' );
+						loader_kallbotti.load( 'Kallbotti.glb', function ( kallbotti ) {
+							kallbotti.scene.position.set(0,0,-15);
+							kallbotti.scene.scale.set( 10.0, 10.0, 10.0 );
+							scene.add( kallbotti.scene );
+							render();
+						} );
+
+					} );
+
+				//---------------------------------
+
+
+
+				const blocker = document.getElementById( 'blocker' );
+				const instructions = document.getElementById( 'instructions' );
+
+				instructions.addEventListener( 'click', function () {
+
+					controls.lock();
+
+				} );
+
+				controls.addEventListener( 'lock', function () {
+
+					instructions.style.display = 'none';
+					blocker.style.display = 'none';
+
+				} );
+
+				controls.addEventListener( 'unlock', function () {
+
+					blocker.style.display = 'block';
+					instructions.style.display = '';
+
+				} );
+
+				scene.add( controls.getObject() );
+
+				const onKeyDown = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = true;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = true;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = true;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = true;
+							break;
+
+						case 'Space':
+							if ( canJump === true ) velocity.y += 350;
+							canJump = false;
+							break;
+
+					}
+
+				};
+
+				const onKeyUp = function ( event ) {
+
+					switch ( event.code ) {
+
+						case 'ArrowUp':
+						case 'KeyW':
+							moveForward = false;
+							break;
+
+						case 'ArrowLeft':
+						case 'KeyA':
+							moveLeft = false;
+							break;
+
+						case 'ArrowDown':
+						case 'KeyS':
+							moveBackward = false;
+							break;
+
+						case 'ArrowRight':
+						case 'KeyD':
+							moveRight = false;
+							break;
+
+					}
+
+				};
+
+				document.addEventListener( 'keydown', onKeyDown );
+				document.addEventListener( 'keyup', onKeyUp );
+
+				raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
+
+				// floor
+
+				let floorGeometry = new THREE.PlaneGeometry( 2000, 2000, 100, 100 );
+				floorGeometry.rotateX( - Math.PI / 2 );
+
+				/*floorTexture = new THREE.TextureLoader().load( 'img/wood_texture512.jpg' ); 
+				floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+				floorTexture.repeat.set(20, 20);
+				material = new THREE.MeshBasicMaterial({map: floorTexture}),
+				mesh = new THREE.Mesh( geometry, material );
+				scene.add( mesh );*/										//Floor Texture
+
+				// vertex displacement
+
+				let position = floorGeometry.attributes.position;
+
+				/*for ( let i = 0, l = position.count; i < l; i ++ ) {
+
+					vertex.fromBufferAttribute( position, i );
+
+					vertex.x += Math.random() * 20 - 10;
+					vertex.y += Math.random() * 2;
+					vertex.z += Math.random() * 20 - 10;
+
+					position.setXYZ( i, vertex.x, vertex.y, vertex.z );
+
+				}*/
+
+				floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
+
+				position = floorGeometry.attributes.position;
+				const colorsFloor = [];
+
+				for ( let i = 0, l = position.count; i < l; i ++ ) {
+
+					color.setHSL( Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+					colorsFloor.push( color.r, color.g, color.b );
 
 				}
 
-			}
+				floorGeometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colorsFloor, 3 ) );
+//----------------------------------------------------------------------------------
 
-			if ( window.location.hash !== '' ) {
+//Adding Wood Floor Texture
 
-				const file = window.location.hash.substring( 1 );
+				const floorTexture = new THREE.TextureLoader().load( 'textures/hardwood2_diffuse.jpg' );
+				floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+				floorTexture.repeat.set(20, 20);
+				const floorMaterial = new THREE.MeshBasicMaterial({map: floorTexture});
+				const floor = new THREE.Mesh( floorGeometry, floorMaterial );
+							
 
-				// use a predefined map of redirects to avoid untrusted URL redirection due to user-provided value
+//---------------------------------------------------------------------------
+				//const floorMaterial = new THREE.MeshBasicMaterial( { vertexColors: true } );
+				//const floor = new THREE.Mesh( floorGeometry, floorMaterial );
 
-				if ( validRedirects.has( file ) === true ) {
+				scene.add( floor );//Added floor
+//------------------------------------------------------
+				// objects
 
-					selectFile( file );
-					viewer.src = validRedirects.get( file );
-					viewer.style.display = 'unset';
+				//const boxGeometry = new THREE.BoxGeometry( 20, 20, 20 ).toNonIndexed();
 
-				}
+				//position = boxGeometry.attributes.position;
+				//const colorsBox = [];
 
-			}
+				/*for ( let i = 0, l = position.count; i < l; i ++ ) {
 
-			if ( viewer.src === '' ) {
+					color.setHSL( Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+					colorsBox.push( color.r, color.g, color.b );
 
-				viewer.srcdoc = document.getElementById( 'PlaceholderHTML' ).innerHTML;
-				viewer.style.display = 'unset';
+				}*/ 		//random boxes color
 
-			}
+				//boxGeometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colorsBox, 3 ) );
 
-			filterInput.value = extractQuery();
+				/*for ( let i = 0; i < 500; i ++ ) {
 
-			if ( filterInput.value !== '' ) {
+					const boxMaterial = new THREE.MeshPhongMaterial( { specular: 0xffffff, flatShading: true, vertexColors: true } );
+					boxMaterial.color.setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
 
-				panel.classList.add( 'searchFocused' );
+					const box = new THREE.Mesh( boxGeometry, boxMaterial );
+					box.position.x = Math.floor( Math.random() * 20 - 10 ) * 20;
+					box.position.y = Math.floor( Math.random() * 20 ) * 20 + 10;
+					box.position.z = Math.floor( Math.random() * 20 - 10 ) * 20;
 
-				updateFilter( files, tags );
+					scene.add( box );
+					objects.push( box );
 
-			} else {
+				}*/ //Random Boxes Added
 
-				updateLink( '' );
+				//
 
-			}
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
 
-			// Events
+				//
 
-			filterInput.onfocus = function ( ) {
-
-				panel.classList.add( 'searchFocused' );
-
-			};
-
-			filterInput.onblur = function ( ) {
-
-				if ( filterInput.value === '' ) {
-
-					panel.classList.remove( 'searchFocused' );
-
-				}
-
-			};
-
-			exitSearchButton.onclick = function ( ) {
-
-				filterInput.value = '';
-				updateFilter( files, tags );
-				panel.classList.remove( 'searchFocused' );
-
-			};
-
-			filterInput.addEventListener( 'input', function () {
-
-				updateFilter( files, tags );
-
-			} );
-
-
-			expandButton.addEventListener( 'click', function ( event ) {
-
-				event.preventDefault();
-				panel.classList.toggle( 'open' );
-
-			} );
-
-			panelScrim.onclick = function ( event ) {
-
-				event.preventDefault();
-				panel.classList.toggle( 'open' );
-
-			};
-
-			previewsToggler.onclick = function ( event ) {
-
-				event.preventDefault();
-				content.classList.toggle( 'minimal' );
-
-			};
-
-			// iOS iframe auto-resize workaround
-
-			if ( /(iPad|iPhone|iPod)/g.test( navigator.userAgent ) ) {
-
-				viewer.style.width = getComputedStyle( viewer ).width;
-				viewer.style.height = getComputedStyle( viewer ).height;
-				viewer.setAttribute( 'scrolling', 'no' );
+				window.addEventListener( 'resize', onWindowResize );
 
 			}
 
-		}
+			function onWindowResize() {
 
-		function createLink( file ) {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
 
-			const template = `
-				<div class="card">
-					<a href="${file}.html" target="viewer">
-						<div class="cover">
-							<img src="screenshots/${ file }.jpg" loading="lazy" width="400" />
-						</div>
-						<div class="title">${getName( file )}</div>
-					</a>
-				</div>
-			`;
-
-			const link = createElementFromHTML( template );
-
-			link.querySelector( 'a[target="viewer"]' ).addEventListener( 'click', function ( event ) {
-
-				if ( event.button !== 0 || event.ctrlKey || event.altKey || event.metaKey ) return;
-
-				selectFile( file );
-
-			} );
-
-			return link;
-
-		}
-
-		function selectFile( file ) {
-
-			if ( selected !== null ) links[ selected ].classList.remove( 'selected' );
-
-			links[ file ].classList.add( 'selected' );
-
-			window.location.hash = file;
-			viewer.focus();
-			viewer.style.display = 'unset';
-
-			panel.classList.remove( 'open' );
-
-			selected = file;
-
-			// Reveal "View source" button and set attributes to this example
-			viewSrcButton.style.display = '';
-			viewSrcButton.href = 'https://github.com/mrdoob/three.js/blob/master/examples/' + selected + '.html';
-			viewSrcButton.title = 'View source code for ' + getName( selected ) + ' on GitHub';
-
-		}
-
-		function escapeRegExp( string ) {
-
-			return string.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ); // https://stackoverflow.com/a/6969486/5250847
-
-		}
-
-		function updateFilter( files, tags ) {
-
-			let v = filterInput.value.trim();
-			v = v.replace( /\s+/gi, ' ' ); // replace multiple whitespaces with a single one
-
-			if ( v !== '' ) {
-
-				window.history.replaceState( {}, '', '?q=' + v + window.location.hash );
-
-			} else {
-
-				window.history.replaceState( {}, '', window.location.pathname + window.location.hash );
+				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}
 
-			const exp = new RegExp( escapeRegExp( v ), 'gi' );
+			function animate() {
 
-			for ( const key in files ) {
+				requestAnimationFrame( animate );
 
-				const section = files[ key ];
+				const time = performance.now();
 
-				for ( let i = 0; i < section.length; i ++ ) {
+				if ( controls.isLocked === true ) {
 
-					filterExample( section[ i ], exp, tags );
+					raycaster.ray.origin.copy( controls.getObject().position );
+					raycaster.ray.origin.y -= 10;
 
-				}
+					const intersections = raycaster.intersectObjects( objects, false );
 
-			}
+					const onObject = intersections.length > 0;
 
-			layoutList( files );
+					const delta = ( time - prevTime ) / 1000;
 
-			updateLink( v );
+					velocity.x -= velocity.x * 10.0 * delta;
+					velocity.z -= velocity.z * 10.0 * delta;
 
-		}
+					velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
-		function updateLink( search ) {
+					direction.z = Number( moveForward ) - Number( moveBackward );
+					direction.x = Number( moveRight ) - Number( moveLeft );
+					direction.normalize(); // this ensures consistent movements in all directions
 
-			// update docs link
+					if ( moveForward || moveBackward ) velocity.z -= direction.z * 400.0 * delta;
+					if ( moveLeft || moveRight ) velocity.x -= direction.x * 400.0 * delta;
 
-			if ( search ) {
+					if ( onObject === true ) {
 
-				const link = sectionLink.href.split( /[?#]/ )[ 0 ];
-				sectionLink.href = `${link}?q=${search}`;
+						velocity.y = Math.max( 0, velocity.y );
+						canJump = true;
 
-			} else {
+					}
 
-				sectionLink.href = sectionDefaultHref;
+					controls.moveRight( - velocity.x * delta );
+					controls.moveForward( - velocity.z * delta );
 
-			}
+					controls.getObject().position.y += ( velocity.y * delta ); // new behavior
 
-		}
+					if ( controls.getObject().position.y < 10 ) {
 
-		function filterExample( file, exp, tags ) {
+						velocity.y = 0;
+						controls.getObject().position.y = 10;
 
-			const link = links[ file ];
-			const name = getName( file );
-			if ( file in tags ) file += ' ' + tags[ file ].join( ' ' );
-			const res = file.match( exp );
-			let text;
-
-			if ( res && res.length > 0 ) {
-
-				link.classList.remove( 'hidden' );
-
-				for ( let i = 0; i < res.length; i ++ ) {
-
-					text = name.replace( res[ i ], '<b>' + res[ i ] + '</b>' );
-
-				}
-
-				link.querySelector( '.title' ).innerHTML = text;
-
-			} else {
-
-				link.classList.add( 'hidden' );
-				link.querySelector( '.title' ).innerHTML = name;
-
-			}
-
-		}
-
-		function getName( file ) {
-
-			const name = file.split( '_' );
-			name.shift();
-			return name.join( ' / ' );
-
-		}
-
-		function layoutList( files ) {
-
-			for ( const key in files ) {
-
-				let collapsed = true;
-
-				const section = files[ key ];
-
-				for ( let i = 0; i < section.length; i ++ ) {
-
-					const file = section[ i ];
-
-					if ( links[ file ].classList.contains( 'hidden' ) === false ) {
-
-						collapsed = false;
-						break;
+						canJump = true;
 
 					}
 
 				}
 
-				const element = document.querySelector( 'h2[data-category="' + key + '"]' );
+				prevTime = time;
 
-				if ( collapsed ) {
-
-					element.classList.add( 'hidden' );
-
-				} else {
-
-					element.classList.remove( 'hidden' );
-
-				}
+				renderer.render( scene, camera );
 
 			}
+function render() {
 
-		}
+renderer.render( scene, camera );
 
-		function extractQuery() {
-
-			const search = window.location.search;
-
-			if ( search.indexOf( '?q=' ) !== - 1 ) {
-
-				return decodeURI( search.slice( 3 ) );
-
-			}
-
-			return '';
-
-		}
-
-		function createElementFromHTML( htmlString ) {
-
-			const div = document.createElement( 'div' );
-			div.innerHTML = htmlString.trim();
-			return div.firstChild;
-
-		}
+}
 
 		</script>
-		<template id="PlaceholderHTML">
-			<!DOCTYPE html>
-				<html lang="en">
-					<head>
-						<meta charset="utf-8">
-						<title>three.js examples</title>
-						<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-						<link rel="stylesheet" type="text/css" href="../files/main.css">
-						<style>
-						html, body {
-							height: 100%;
-						}
-						body {
-							height: 100%;
-							display: flex;
-							align-items: center;
-							justify-content: center;
-							user-select: none;
-						}
-						</style>
-					</head>
-					<body>
-						Select an example from the sidebar
-					</body>
-				</html>
-		</template>
 	</body>
 </html>
