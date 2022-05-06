@@ -135,6 +135,16 @@
 							render();
 						} );
 
+						const loader_coorgsat = new GLTFLoader().setPath( 'models/gltf/' );
+						loader_coorgsat.load( 'CoorgSat.glb', function ( coorgsat ) {
+							coorgsat.scene.position.set(0,10,-10);
+							coorgsat.scene.scale.set( 6.0, 6.0, 6.0 );
+							coorgsat.scene.rotateY(20.5)
+							scene.add( coorgsat.scene );
+							render();
+
+						} );
+
 					} );
 
 				//---------------------------------
