@@ -140,12 +140,12 @@ loader_coorgsat.load( 'CoorgSat.glb', function ( coorgsat ) {
 							//scene.remove( coorgsat.scene );
 							//render();
 						} );
-loader_cube.load( 'cubeani.glb', function ( cube ) {
+loader_cube.load( 'singing.glb', function ( cube ) {
 	cubeobj=cube;
-							cube.scene.position.set(0,10,-10);
-							cube.scene.scale.set( 4.0, 4.0, 4.0);
+							cube.scene.position.set(15,0,-40);
+							cube.scene.scale.set( 8.0, 8.0, 8.0);
 							//coorgsat.scene.rotateY(20.5);
-							cube.scene.rotation.y=1.6;
+							cube.scene.rotation.y=0;
 
 							mixer= new THREE.AnimationMixer(cube.scene);
 							var action = mixer.clipAction(cube.animations[ 0 ] );
@@ -183,18 +183,8 @@ loader_cube.load( 'cubeani.glb', function ( cube ) {
 				controls = new PointerLockControls( camera, document.body );
 				
 				//-------------------------------------------
-				/*
-				const listener = new THREE.AudioListener();
-				camera.add( listener );
-				const sound = new THREE.Audio( listener );
 				
-				const audioLoader = new THREE.AudioLoader();
-				audioLoader.load( 'sounds/Kaal_kodikondu_Bava.mp3', function( buffer ) {
-				sound.setBuffer( buffer );
-				sound.setLoop( true );
-				sound.setVolume( 0.5 );
-				sound.play();
-				});*/
+				playmusic();//Play MUSIC !!!!!!!!!!!!!!!!!!!!!!!!!
 
 				//-------------------------------------------
 
@@ -550,6 +540,21 @@ function deformer()
 	coorgsatobj.scene.rotation.y=1.6+rotater;
 	coorgsatobj.scene.scale.set(4+scaler,4+scaler,4+scaler);
 	
+}
+
+function playmusic()
+{
+	const listener = new THREE.AudioListener();
+				camera.add( listener );
+				const sound = new THREE.Audio( listener );
+				
+				const audioLoader = new THREE.AudioLoader();
+				audioLoader.load( 'sounds/Kaal_kodikondu_Bava.mp3', function( buffer ) {
+				sound.setBuffer( buffer );
+				sound.setLoop( true );
+				sound.setVolume( 0.5 );
+				sound.play();
+				});
 }
 
 		</script>
