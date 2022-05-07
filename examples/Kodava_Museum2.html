@@ -32,15 +32,17 @@
 		<div id="blocker">
 			<div id="instructions">
 				<p style="font-size:36px">
-					Click to Start Tour
+					Click to Explore, Press Esc for Tips and Additional info
 				</p>
-				<p style="font-size:24px">
+				<p style="font-size:24px" id="info box">
 					Movement: WASD<br/>
-					Jump: SPACE<br/>
-					Scale Object Bigger: O<br/>
-					Scale Object Bigger: L<br/>
-					Rotate Object:R<br>
-					Look Around: MOUSE
+					Jump: SPACE<br/><br>
+					Scale Map Bigger: O<br/>
+					Scale Map Bigger: L<br/><br>
+					Rotate Object:R<br><br>
+					Look Around: MOUSE<br><br><br>
+					Music: "Kaal_kodikondu_Bava"
+					
 				</p>
 			</div>
 		</div>
@@ -90,11 +92,13 @@
 			const loader_kallbotti = new GLTFLoader().setPath( 'models/gltf/' );
 			const loader_bakkapore = new GLTFLoader().setPath( 'models/gltf/' );
 			const loader_cube = new GLTFLoader().setPath( 'models/gltf/' );
+			const loader_map = new GLTFLoader().setPath( 'models/gltf/' );
 
 			let coorgsatobj;
 			let bakkaporeobj;
 			let kallbottiobj;
 			let cubeobj;
+			let mapobj;
 
 			var mixer;
 			var clock = new THREE.Clock();
@@ -126,6 +130,7 @@ loader_kallbotti.load( 'Kallbotti.glb', function ( kallbotti ) {
 							kallbotti.scene.position.set(0,0,-15);
 							kallbotti.scene.scale.set( 10.0, 10.0, 10.0 );
 							scene.add( kallbotti.scene );
+							objects.push(bakkapore.scene);
 							//render();
 						} );
 
@@ -137,6 +142,7 @@ loader_coorgsat.load( 'CoorgSat.glb', function ( coorgsat ) {
 							//coorgsat.scene.rotateY(20.5);
 							coorgsat.scene.rotation.y=1.6;
 							scene.add( coorgsat.scene );
+							
 							//scene.remove( coorgsat.scene );
 							//render();
 						} );
@@ -155,7 +161,17 @@ loader_cube.load( 'singing.glb', function ( cube ) {
 							//scene.remove( coorgsat.scene );
 							//render();
 						} );
-
+loader_map.load( 'map.glb', function ( map ) {
+	mapobj=map;
+							map.scene.position.set(100,0.1,70);
+							map.scene.scale.set( 240.0, 240.0, 240.0);
+							//coorgsat.scene.rotateY(20.5);
+							map.scene.rotation.y=0;
+							scene.add(map.scene );
+							objects.push(bakkapore.scene);
+							//scene.remove( coorgsat.scene );
+							//render();
+						} );
 
 
 
@@ -184,7 +200,7 @@ loader_cube.load( 'singing.glb', function ( cube ) {
 				
 				//-------------------------------------------
 				
-				playmusic();//Play MUSIC !!!!!!!!!!!!!!!!!!!!!!!!!
+			playmusic();//Play MUSIC !!!!!!!!!!!!!!!!!!!!!!!!!
 
 				//-------------------------------------------
 
@@ -440,10 +456,10 @@ loader_cube.load( 'singing.glb', function ( cube ) {
 			function animate() {
 
 				requestAnimationFrame( animate );
-				//-------------------------------------
+				//-------------------------------------ANIMATION------------------------------------
 				var delta = clock.getDelta();
 				if ( mixer ) mixer.update( delta );
-				//-------------------------------------
+				//----------------------------------------------------------------------------------
 				const time = performance.now();
 
 				if ( controls.isLocked === true ) {
